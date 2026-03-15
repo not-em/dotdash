@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morse Code</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f8f8f8;
+    color: #111;
+    font-family: system-ui, sans-serif;
+    font-size: 15px;
+    padding: 2rem 1rem;
+  }
+
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .tab {
+    font-size: 0.9rem;
+    padding: 0.5rem 1.1rem;
+    background: none;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    color: #666;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    bottom: -1px;
+  }
+
+  .tab.active {
+    background: #f8f8f8;
+    border-color: #ddd;
+    color: #111;
+    font-weight: 500;
+  }
+
+  .tab:hover:not(.active) { color: #111; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: #555;
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+  }
+
+  textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.65rem 0.75rem;
+    font-family: monospace;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    background: #fff;
+    color: #111;
+  }
+  textarea:focus { border-color: #555; }
+
+  .field { margin-bottom: 1.1rem; }
+
+  .output-box {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 56px;
+    padding: 0.65rem 0.75rem;
+    font-family: monospace;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #111;
+    word-break: break-all;
+    white-space: pre-wrap;
+  }
+
+  .wpm-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.1rem;
+  }
+  .wpm-row label { margin: 0; white-space: nowrap; }
+  input[type=range] { flex: 1; cursor: pointer; accent-color: #333; }
+  .wpm-val { font-size: 0.85rem; color: #444; min-width: 3.5rem; text-align: right; }
+
+  .btn-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  button {
+    font-size: 0.85rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #bbb;
+    background: #fff;
+    color: #111;
+    transition: background 0.12s;
+  }
+  button:hover { background: #eee; }
+  button.primary { background: #111; color: #fff; border-color: #111; }
+  button.primary:hover { background: #333; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .playback {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #555;
+    margin-bottom: 0.75rem;
+  }
+  .playback.visible { display: flex; }
+  .dot-anim { display: flex; gap: 3px; }
+  .dot-anim span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #555;
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  .dot-anim span:nth-child(2) { animation-delay: 0.18s; }
+  .dot-anim span:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.2; } 50% { opacity: 1; }
+  }
+
+  .error {
+    font-size: 0.8rem;
+    color: #b00;
+    margin-bottom: 0.75rem;
+    display: none;
+  }
+  .error.visible { display: block; }
+
+  .divider {
+    text-align: center;
+    color: #bbb;
+    margin: 1.25rem 0;
+    letter-spacing: 0.3em;
+  }
+
+  footer {
+    margin-top: 3rem;
+    font-size: 0.75rem;
+    color: #aaa;
+    text-align: center;
+    border-top: 1px solid #e5e5e5;
+    padding-top: 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Morse Code</h1>
+  <p class="subtitle">Encode, decode, listen to and download ITU standard Morse code</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('encode')">Encode</button>
+    <button class="tab" onclick="switchTab('decode')">Decode</button>
+  </div>
+
+  <!-- ENCODE -->
+  <div class="panel active" id="panel-encode">
+    <div class="field">
+      <label>Plain text</label>
+      <textarea id="enc-input" rows="3" placeholder="Type your message here..."></textarea>
+    </div>
+
+    <div class="wpm-row">
+      <label>Speed</label>
+      <input type="range" id="wpm" min="5" max="40" value="20"
+             oninput="document.getElementById('wpm-val').textContent = this.value + ' wpm'">
+      <span class="wpm-val" id="wpm-val">20 wpm</span>
+    </div>
+
+    <div class="btn-row">
+      <button class="primary" onclick="doEncode()">Encode</button>
+      <button id="play-btn" onclick="playAudio()" disabled>▶ Play</button>
+      <button id="dl-btn" onclick="downloadAudio()" disabled>↓ Download MP3</button>
+    </div>
+
+    <div class="playback" id="playback">
+      <div class="dot-anim"><span></span><span></span><span></span></div>
+      Transmitting…
+    </div>
+    <p class="error" id="enc-error"></p>
+
+    <div class="divider">· · ·</div>
+
+    <div class="field">
+      <label>Morse output</label>
+      <div class="output-box" id="enc-output">—</div>
+    </div>
+  </div>
+
+  <!-- DECODE -->
+  <div class="panel" id="panel-decode">
+    <div class="field">
+      <label>Morse code — dots and dashes, spaces between letters, / between words</label>
+      <textarea id="dec-input" rows="3" placeholder="... --- ..."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="primary" onclick="doDecode()">Decode</button>
+    </div>
+    <p class="error" id="dec-error"></p>
+
+    <div class="divider">· · ·</div>
+
+    <div class="field">
+      <label>Plain text output</label>
+      <div class="output-box" id="dec-output">—</div>
+    </div>
+  </div>
+
+  <footer>Morse Code Tool · ITU Standard</footer>
+</div>
+
+<script>
+  let currentAudioBlob = null;
+  let currentAudio = null;
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0) === (name === 'encode'));
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  async function doEncode() {
+    const text = document.getElementById('enc-input').value.trim();
+    const err  = document.getElementById('enc-error');
+    err.className = 'error';
+    if (!text) { err.textContent = 'Please enter some text first.'; err.className = 'error visible'; return; }
+
+    const res  = await fetch('/api/encode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+    const data = await res.json();
+    if (data.error) { err.textContent = data.error; err.className = 'error visible'; return; }
+    document.getElementById('enc-output').textContent = data.morse;
+
+    currentAudioBlob = null;
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('dl-btn').disabled   = true;
+
+    const wpm = document.getElementById('wpm').value;
+    const ar  = await fetch('/api/audio', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({text, wpm: parseInt(wpm)}) });
+    if (ar.ok) {
+      currentAudioBlob = await ar.blob();
+      document.getElementById('play-btn').disabled = false;
+      document.getElementById('dl-btn').disabled   = false;
+    }
+  }
+
+  function playAudio() {
+    if (!currentAudioBlob) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    const url = URL.createObjectURL(currentAudioBlob);
+    currentAudio = new Audio(url);
+    const pb = document.getElementById('playback');
+    pb.className = 'playback visible';
+    currentAudio.play();
+    currentAudio.onended = () => { pb.className = 'playback'; URL.revokeObjectURL(url); };
+  }
+
+  function downloadAudio() {
+    if (!currentAudioBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(currentAudioBlob);
+    a.download = 'morse.mp3';
+    a.click();
+  }
+
+  async function doDecode() {
+    const morse = document.getElementById('dec-input').value.trim();
+    const err   = document.getElementById('dec-error');
+    err.className = 'error';
+    if (!morse) { err.textContent = 'Please enter some morse code first.'; err.className = 'error visible'; return; }
+
+    const res  = await fetch('/api/decode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({morse}) });
+    const data = await res.json();
+    if (data.error) { err.textContent = data.error; err.className = 'error visible'; return; }
+    document.getElementById('dec-output').textContent = data.text;
+  }
+
+  document.getElementById('enc-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doEncode();
+  });
+</script>
+</body>
+</html>
